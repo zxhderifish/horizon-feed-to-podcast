@@ -1,0 +1,18 @@
+# Your deployment settings and secrets
+config.toml
+.env
+
+# Generated sound package (optional; see assets/audio/README.md)
+assets/audio/*.pcm
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Transient pipeline artifacts
+issue.json
+*.mp3
+
+.DS_Store

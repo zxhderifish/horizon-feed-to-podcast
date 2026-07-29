@@ -1,0 +1,88 @@
+{% macro lx(field) -%}
+<span class="lx"><span class="en">{{ field.en }}</span><span class="zh">{{ field.zh }}</span></span>
+{%- endmacro %}
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ site.brand }} — {{ issue.date }}</title>
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body data-date="{{ issue.date }}">
+<header>
+  <div class="wrap">
+    <div class="hrow">
+      <a class="brand" href="/index.html">{{ site.brand_html }}</a>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button class="themebtn" aria-label="Toggle theme">&#9790;</button>
+        <div class="seg">
+          <button data-lang="en" aria-pressed="true">EN</button>
+          <button data-lang="zh" aria-pressed="false">中</button>
+        </div>
+      </div>
+    </div>
+    <div class="subbar">
+      <div class="mono">{{ issue.date }} · {{ issue.selected }}/{{ issue.total_fetched }} <span class="lx"><span class="en">selected</span><span class="zh">已选</span></span></div>
+      <div><a href="/archive.html"><span class="lx"><span class="en">Archive</span><span class="zh">往期</span></span></a></div>
+    </div>
+  </div>
+</header>
+<main>
+  <p class="tagline"><span class="lx"><span class="en">Daily AI &amp; semiconductor radar</span><span class="zh">每日 AI 与半导体雷达</span></span></p>
+  {% if issue.overview %}
+  <section class="overview">
+    <div class="ov-label"><span class="lx"><span class="en">Today in brief</span><span class="zh">今日要点</span></span></div>
+    {% if issue.overview.summary %}
+    <p class="ov-summary">{{ lx(issue.overview.summary) }}</p>
+    {% endif %}
+    {% if issue.overview.bullets %}
+    <ul class="ov-bullets">
+      {% for b in issue.overview.bullets %}
+      <li>{{ lx(b) }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  {% endif %}
+  {% for item in items %}
+  <article class="card">
+    <div class="scorerow">
+      <span class="score">{{ item.score_str }}</span>
+      <span class="bar"><i style="width:{{ item.score_pct }}"></i></span>
+      <span class="srcabbr">{{ item.src_abbr }}</span>
+    </div>
+    <a class="headline" href="{{ item.url }}" target="_blank" rel="noopener">{{ lx(item.title) }}</a>
+    <div class="proses">
+      <p class="prose">{{ lx(item.whats_new) }}</p>
+      <p class="prose why"><span class="arrow">&rarr; </span>{{ lx(item.why_it_matters) }}</p>
+      <p class="prose key">{{ lx(item.key_details) }}</p>
+    </div>
+    {% if item.background %}
+    <details class="fold"><summary><span class="lx"><span class="en">Background</span><span class="zh">背景</span></span></summary>
+      <p class="body">{{ lx(item.background) }}</p>
+    </details>
+    {% endif %}
+    {% if item.discussion %}
+    <details class="fold" open><summary><span class="lx"><span class="en">Discussion</span><span class="zh">讨论</span></span></summary>
+      <div class="body disc">{{ lx(item.discussion) }}</div>
+    </details>
+    {% endif %}
+    <div class="tags">{% for t in item.tags %}<span>{{ t }}</span>{% endfor %}</div>
+    <div class="metarow">
+      <div class="meta"><span class="stype">{{ item.source_type }}</span> · {{ item.sub_source }} · {{ lx(item.time) }}</div>
+      {% if item.refs %}
+      <details class="fold" style="margin:0"><summary>[refs {{ item.refs|length }}]</summary>
+        <div class="refs">{% for r in item.refs %}<a href="{{ r.url }}" target="_blank" rel="noopener">&#8599; {{ r.label }}</a>{% endfor %}</div>
+      </details>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</main>
+<footer><div class="wrap"><div class="foot"><div>{{ site.brand }}</div>
+  <div><span class="lx"><span class="en">Generated from daily data · deployed on Cloudflare Pages</span><span class="zh">由每日数据生成 · 部署于 Cloudflare Pages</span></span></div>
+</div></div></footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>

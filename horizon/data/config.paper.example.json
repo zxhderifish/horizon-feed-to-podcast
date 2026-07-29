@@ -1,0 +1,21 @@
+{
+  "ai": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4.5-20250929",
+    "api_key_env": "ANTHROPIC_API_KEY",
+    "temperature": 0.3,
+    "max_tokens": 4096
+  },
+  "arxiv": {
+    "categories": ["cs.DC", "cs.LG"],
+    "keywords": [
+      "distributed training", "data parallel", "tensor parallel",
+      "pipeline parallel", "FSDP", "ZeRO", "multi-GPU",
+      "communication overlap", "gradient accumulation", "model parallel"
+    ],
+    "max_results": 100
+  },
+  "score_threshold": 7.0,
+  "time_window_days": 7,
+  "language": "zh"
+}

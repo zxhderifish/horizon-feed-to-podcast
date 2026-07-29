@@ -1,0 +1,103 @@
+{
+  "date": "2026-06-15",
+  "total_fetched": 142,
+  "selected": 2,
+  "overview": {
+    "summary": {
+      "en": "Semiconductors lead today: TSMC's 2nm risk production starts ahead of plan, while regulation enters the picture as the EU begins enforcing its AI Act.",
+      "zh": "今天半导体是主轴：台积电 2 纳米风险试产进度超前；与此同时，欧盟开始执行《AI 法案》，监管正式入场。"
+    },
+    "bullets": [
+      {
+        "en": "TSMC N2 enters risk production, defect density tracking below N3.",
+        "zh": "台积电 N2 进入风险试产，缺陷密度低于 N3。"
+      },
+      {
+        "en": "EU opens its first enforcement window for high-risk AI systems.",
+        "zh": "欧盟开启高风险 AI 系统的首个执法窗口。"
+      }
+    ]
+  },
+  "items": [
+    {
+      "id": "tsmc",
+      "url": "https://example.com/tsmc-n2",
+      "score": 9.1,
+      "source_type": "Hacker News",
+      "sub_source": "ycombinator",
+      "time": {
+        "en": "4h ago",
+        "zh": "4 小时前"
+      },
+      "title": {
+        "en": "TSMC starts 2nm risk production",
+        "zh": "台积电启动 2 纳米试产"
+      },
+      "whats_new": {
+        "en": "TSMC began N2 risk production at Fab 20.",
+        "zh": "台积电在 Fab 20 启动 N2 风险试产。"
+      },
+      "why_it_matters": {
+        "en": "N2 is the first GAA node.",
+        "zh": "N2 是首个 GAA 节点。"
+      },
+      "key_details": {
+        "en": "Early defect density tracks below N3.",
+        "zh": "早期缺陷密度低于 N3。"
+      },
+      "background": {
+        "en": "GAA replaces FinFET used since 2011.",
+        "zh": "GAA 取代自 2011 年沿用的 FinFET。"
+      },
+      "discussion": {
+        "en": "Commenters are skeptical of the framing.",
+        "zh": "评论者对该说法持保留态度。"
+      },
+      "tags": [
+        "#TSMC",
+        "#2nm",
+        "#GAA"
+      ],
+      "refs": [
+        {
+          "label": "N2 brief",
+          "url": "https://example.com/n2"
+        }
+      ]
+    },
+    {
+      "id": "eu-act",
+      "url": "https://example.com/eu-ai-act",
+      "score": 6.8,
+      "source_type": "RSS",
+      "sub_source": "Euractiv",
+      "time": {
+        "en": "1d ago",
+        "zh": "1 天前"
+      },
+      "title": {
+        "en": "EU enforces high-risk AI Act provisions",
+        "zh": "欧盟执行《AI 法案》高风险条款"
+      },
+      "whats_new": {
+        "en": "First enforcement window opened this week.",
+        "zh": "首个执法窗口本周开启。"
+      },
+      "why_it_matters": {
+        "en": "Fines up to 7% of global revenue.",
+        "zh": "罚款最高达全球营收 7%。"
+      },
+      "key_details": {
+        "en": "Grace period extends to early 2027.",
+        "zh": "宽限期延至 2027 年初。"
+      },
+      "background": null,
+      "discussion": null,
+      "tags": [
+        "#policy",
+        "#EU"
+      ],
+      "refs": []
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+[
+  {
+    "date": "2026-07-28",
+    "lang": "zh",
+    "title": "2026-07-28 · 开放权重与 AI 资本开支",
+    "description": "今日概览：AI 资本开支财报周开场。\n\n本期条目：\n1. 某实验室发布开放权重立场 https://example.com/open-weights\n2. 2.8 万亿参数模型公开权重 https://example.com/kimi-k3",
+    "mp3_url": "https://podcast.example.com/2026-07-28-zh.mp3",
+    "bytes": 8123456,
+    "duration_s": 612
+  },
+  {
+    "date": "2026-07-28",
+    "lang": "en",
+    "title": "2026-07-28 · Open Weights Meets AI-Capex Week",
+    "description": "Today in brief: AI-capex earnings week opens.\n\nItems:\n1. A lab publishes its open-weights position https://example.com/open-weights\n2. A 2.8T-parameter model ships its weights https://example.com/kimi-k3",
+    "mp3_url": "https://podcast.example.com/2026-07-28-en.mp3",
+    "bytes": 7123456,
+    "duration_s": 540
+  },
+  {
+    "date": "2026-07-27",
+    "lang": "zh",
+    "title": "2026-07-27 · 上一期示例",
+    "description": "上一期的示例描述。",
+    "mp3_url": "https://podcast.example.com/2026-07-27-zh.mp3",
+    "bytes": 6000000,
+    "duration_s": 480
+  }
+]

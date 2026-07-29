@@ -1,0 +1,13 @@
+---
+layout: default
+---
+{% if page.lang != "paper" and page.date %}
+  {% assign wk = page.date | date: "%G-W%V" %}
+  {% assign papers = site.posts | where: "paper_week", wk %}
+  {% if papers.size > 0 %}
+  <div class="paper-radar-banner">
+    📄 <a href="{{ papers.first.url | relative_url }}">本周论文雷达 · Weekly Paper Radar ({{ wk }})</a>
+  </div>
+  {% endif %}
+{% endif %}
+{{ content }}

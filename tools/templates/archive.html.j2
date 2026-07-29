@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ site.brand }} — archive</title>
+<link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<header><div class="wrap"><div class="hrow">
+  <a class="brand" href="/index.html">{{ site.brand_html }}</a>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <button class="themebtn" aria-label="Toggle theme">&#9790;</button>
+    <div class="seg"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="zh" aria-pressed="false">中</button></div>
+  </div>
+</div></div></header>
+<main>
+  <div style="padding:24px 0 8px">
+    <h1 style="margin:0; font-size:23px"><span class="lx"><span class="en">Archive</span><span class="zh">往期归档</span></span></h1>
+  </div>
+  {% for a in entries %}
+  <a class="arch" href="/{{ a.date }}.html">
+    <div class="d"><div>{{ a.date }}</div><div style="color:var(--muted); font-size:11px; margin-top:4px">{{ a.count }}</div></div>
+    <div class="lead"><span class="lx"><span class="en">{{ a.lead_en }}</span><span class="zh">{{ a.lead_zh }}</span></span></div>
+    <span style="color:var(--muted)">&rsaquo;</span>
+  </a>
+  {% endfor %}
+</main>
+<script src="/assets/app.js"></script>
+</body>
+</html>

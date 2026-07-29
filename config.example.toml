@@ -1,0 +1,108 @@
+# Copy this file to config.toml and edit it. config.toml is gitignored.
+#
+# Two languages are configured below as an example. You can run a single show
+# by deleting one of the [podcast.shows.*] blocks, or add more (each key becomes
+# the language suffix in podcast-<key>.xml and YYYY-MM-DD-<key>.mp3).
+
+[hosting]
+# Where your static site and RSS feeds are served (e.g. Cloudflare Pages domain).
+site_url = "https://feed.example.com"
+# Where episode audio is served (e.g. an R2 bucket bound to a custom domain).
+audio_url = "https://podcast.example.com"
+# Object storage bucket that holds the episode mp3s.
+bucket = "my-podcast-audio"
+
+[podcast]
+# Podcast platforms use this address to verify you own the show. It must be a
+# mailbox you can actually read.
+owner_email = "you@example.com"
+# Apple Podcasts category, e.g. Technology / News / Science.
+category = "Technology"
+
+[podcast.shows.en]
+title = "My Daily Tech Brief"
+# Shown as the host/artist name in podcast apps.
+author = "Your Name"
+language = "en-us"
+# Gemini prebuilt voice used for this show's narration.
+voice = "Charon"
+# Blank lines become paragraphs; single newlines become line breaks. Podcast
+# clients render this as HTML, so plain text is converted for you.
+description = """
+One paragraph on what the show is and who it is for. Keep it concrete: what gets covered, how long an episode runs, how often it publishes.
+
+Notes: Auto-generated and narrated daily by an AI pipeline — fetching, scoring, writing, and voicing.
+
+Sources:
+· Hacker News (top stories + comments)
+· Reddit: r/MachineLearning, r/programming
+· Blogs and trade press you actually pull from
+· Key GitHub releases you track
+"""
+
+[podcast.shows.zh]
+title = "我的每日科技简报"
+author = "你的名字"
+language = "zh-cn"
+voice = "Kore"
+description = """
+一段话说明节目定位与受众：覆盖什么、每期多长、多久更新一次。
+
+Notes：本节目由 AI 流水线每日自动生成与播报，覆盖抓取、打分、筛选、撰稿与配音。
+
+信源包括：
+· Hacker News（高热帖 + 社区讨论）
+· Reddit：r/MachineLearning、r/programming
+· 你实际订阅的技术博客与行业媒体
+· 你关注的 GitHub 项目发布
+"""
+
+# ---------------------------------------------------------------------------
+# What the briefing is ABOUT. The scoring step reads this before judging a
+# single item, so it is the biggest lever you have over what gets in. The
+# rubric itself (0-10 bands, novelty, discussion quality) is domain-agnostic —
+# only the subject matter comes from here.
+#
+# The example below is a film/TV briefing, to make the point that this pipeline
+# is not tech-specific. Rewrite all four fields for your own interests, and
+# choose matching sources in horizon/data/config.json.
+# ---------------------------------------------------------------------------
+[editorial]
+# Who is listening, and what they already know. Be specific: "a working
+# cinematographer" filters very differently from "someone who likes movies".
+audience = """
+A working film and TV professional — someone who follows craft and industry
+mechanics, not celebrity news. Assume they know standard production vocabulary
+and do not need festival names or major studios explained.
+"""
+
+# In-scope topics, most important first.
+topics = [
+  "camera, lens, and lighting technology",
+  "post-production tools and workflows",
+  "festival programming and acquisitions",
+  "distribution and streaming strategy",
+  "notable craft interviews and technical breakdowns",
+]
+
+# Admit neighbouring fields you would otherwise miss. Adjacent-domain items get
+# scored on their impact to the audience above, not on their importance in that
+# other field.
+also_in_scope = """
+Studio and streamer business news when it materially changes what gets made or
+how it gets released — output deals, budget shifts, windowing changes, strikes
+and labour agreements.
+"""
+
+# Name what you never want, however prominent it gets. This is as load-bearing
+# as `topics`.
+out_of_scope = """
+Celebrity gossip, red-carpet and awards-campaign chatter, box-office horse-race
+numbers without analysis, casting rumours, and fan speculation.
+"""
+
+[site]
+# Wordmark shown in the header and footer of the generated text pages.
+brand = "feed.example.com"
+# Optional HTML variant, so you can style part of the wordmark.
+brand_html = 'feed<span class="dot">.</span>example.com'
