@@ -14,8 +14,8 @@ import config as app_config
 ITUNES_NS = "http://www.itunes.com/dtds/podcast-1.0.dtd"
 ATOM_NS = "http://www.w3.org/2005/Atom"
 
-# Feed pubDate is fixed at 07:30 UTC (shortly after the daily run).
-PUB_HOUR_UTC = 7
+# Feed pubDate is fixed at 12:30 UTC, shortly after the daily run.
+PUB_HOUR_UTC = 12
 PUB_MINUTE_UTC = 30
 
 

@@ -66,7 +66,7 @@ def test_build_rss_item_fields():
     assert item.find(f"{ITUNES}duration").text == "540"
     pub = item.find("pubDate").text
     assert "Jul 2026" in pub  # RFC 2822
-    assert "07:30:00 +0000" in pub  # fixed 07:30 UTC pub time
+    assert "12:30:00 +0000" in pub  # fixed 12:30 UTC pub time
 
 
 def test_build_rss_dedupes_same_date_lang_keeping_last():
