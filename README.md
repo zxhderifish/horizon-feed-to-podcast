@@ -12,6 +12,9 @@ A daily briefing that publishes itself twice: once as a web page, once as a
 narrated podcast episode per language. A typical run reads about 40 items, keeps
 15, writes them up, and has the episodes on Apple Podcasts before breakfast.
 
+Running example — both shows come out of the same pipeline, same morning:
+[Silicon SNR](https://podcasts.apple.com/us/podcast/silicon-snr/id6795804285) (English) and [硅基信噪比](https://podcasts.apple.com/us/podcast/%E7%A1%85%E5%9F%BA%E4%BF%A1%E5%99%AA%E6%AF%94/id6795804021) (Chinese).
+
 It exists because feed volume outgrows reading time, and because most AI
 summarizers flatten everything into the same tone. Scoring is the part that
 matters, and scoring is a judgment call, so it lives in a prompt that can be
@@ -37,10 +40,10 @@ fetch → dedupe → score → enrich → write → render → push site
 
 ## Not a tech-news tool
 
-The reference deployment covers AI and semiconductors; the machinery doesn't care.
-The audience and topics are described in `config.toml`, and the scrapers point
-wherever you aim them. The example config is deliberately a film/TV setup, so it's
-clear the tech angle isn't baked in.
+The reference deployment above covers AI and semiconductors; the machinery doesn't
+care. The audience and topics are described in `config.toml`, and the scrapers
+point wherever you aim them. The example config is deliberately a film/TV setup, so
+it's clear the tech angle isn't baked in.
 
 ## Why not NotebookLM
 
