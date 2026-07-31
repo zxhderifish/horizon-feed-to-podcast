@@ -12,8 +12,10 @@
 留下十五条，写成稿，并在早餐前把两期节目送上 Apple Podcasts。
 
 实际跑着的例子——两档节目出自同一条流水线、同一个早上：
-硅基信噪比（中文，[小宇宙](https://www.xiaoyuzhoufm.com/podcast/6a69b0efdd4effa43566ecee) / [Apple Podcasts](https://podcasts.apple.com/us/podcast/%E7%A1%85%E5%9F%BA%E4%BF%A1%E5%99%AA%E6%AF%94/id6795804021)）
-和 [Silicon SNR](https://podcasts.apple.com/us/podcast/silicon-snr/id6795804285)（英文）。同一条 RSS 喂给所有平台。
+硅基信噪比（中文）——[小宇宙](https://www.xiaoyuzhoufm.com/podcast/6a69b0efdd4effa43566ecee)、[Apple Podcasts](https://podcasts.apple.com/us/podcast/%E7%A1%85%E5%9F%BA%E4%BF%A1%E5%99%AA%E6%AF%94/id6795804021)、[Spotify](https://open.spotify.com/show/033YD2MbVYxP1LBX7PsC1c)
+[Silicon SNR](https://podcasts.apple.com/us/podcast/silicon-snr/id6795804285)（英文）
+
+同一条 RSS 喂给所有平台，每天早上自动多出一期。
 
 它存在的理由是：订阅量早已超过能读完的时间，而多数 AI 摘要工具会把所有内容压成同一种语气。
 打分才是关键的一步，而打分是判断题，所以它放在一份可以随手修改的 prompt 里，而不是一个要重写
