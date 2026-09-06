@@ -55,6 +55,9 @@ Gemini TTS 的中英文都不错，这个量级下免费。
 
 - Python 3.11+、[uv](https://docs.astral.sh/uv/)、`ffmpeg`
 - 一个 [Gemini API key](https://aistudio.google.com/apikey)
+- 可选：一块可用显存约 9 GB 的 NVIDIA 显卡，用来把配音改成本地合成——见
+  [docs/local-tts-setup_zh.md](docs/local-tts-setup_zh.md)。无论走哪条路，Gemini 都
+  留作自动回退。
 - 放 mp3 的对象存储。Cloudflare R2 比较合适——播客托管的成本大头是流量，而 R2 不收流量费。
 - 放网站和 RSS 文件的静态托管。能托管 git 仓库的都行。
 - 一个能按计划执行 prompt 的编码智能体。本项目是基于
@@ -136,6 +139,14 @@ TTS 在长请求上会漂：一次要它念十分钟，语速会飘，后半段�
 音效是可选的，没随仓库分发——格式和挂载点见
 [`assets/audio/README.md`](assets/audio/README.md)。适合一个主题的开场曲放到另一个主题上就是
 错的，自己挑。
+
+**声音可以由本地模型生成。** 配好之后（见
+[docs/local-tts-setup_zh.md](docs/local-tts-setup_zh.md)），每次运行会先试本地，失败就
+回退 Gemini——而且按语言各自独立，中文可以走本地、英文同时回退。运行会打印 `tts=local`
+或 `tts=gemini (...)`，这行是本地路径悄悄失效的唯一信号。
+
+这不是一笔省钱的账——这个量级下 Gemini 本来就便宜，一块大部分时间闲着的显卡也谈不上更省。
+它换来的是：单集时长和语言数量不再是预算问题，以及稿子内容不出本机。
 
 ## 成本
 

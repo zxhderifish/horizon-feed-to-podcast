@@ -16,3 +16,8 @@ issue.json
 *.mp3
 
 .DS_Store
+
+# Voice clone references: generated locally, never published
+# (see assets/voice/README.md)
+assets/voice/ref.json
+assets/voice/*.wav

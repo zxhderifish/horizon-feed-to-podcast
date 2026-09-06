@@ -61,6 +61,9 @@ volume.
 
 - Python 3.11+, [uv](https://docs.astral.sh/uv/), `ffmpeg`
 - A [Gemini API key](https://aistudio.google.com/apikey)
+- Optional: an NVIDIA GPU with ~9 GB free, if you want the narration synthesized
+  locally instead — see [docs/local-tts-setup.md](docs/local-tts-setup.md).
+  Gemini stays as the automatic fallback either way.
 - Object storage for the mp3s. Cloudflare R2 works well here — podcast hosting
   cost is mostly egress, and R2 doesn't charge for it.
 - Static hosting for the site and RSS files. Anything that serves a git repo.
@@ -158,6 +161,16 @@ without inserting a sound between the halves.
 Sound effects are optional and not included — see
 [`assets/audio/README.md`](assets/audio/README.md) for the format and hook points.
 A jingle that suits one subject will be wrong for another, so pick your own.
+
+**The voice can come from a local model.** Set one up
+([docs/local-tts-setup.md](docs/local-tts-setup.md)) and every run tries it first,
+falling back to Gemini on any failure — per language, so Chinese can run locally
+while English falls back. The run prints `tts=local` or `tts=gemini (...)`; that
+line is the only signal that the local path quietly stopped working.
+
+It is not a cost decision — at this volume Gemini is cheap and a mostly-idle GPU
+is not. What it buys is that episode length and language count stop being
+budget questions, and that nothing about the script leaves your machine.
 
 ## Cost
 
