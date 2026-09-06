@@ -213,6 +213,12 @@ R2_SECRET_ACCESS_KEY (source `<repo>/.env`; show names and voices come from `con
     (Separate commit from the feed commit so a podcast failure never holds the
     briefing hostage.)
 
+21. **Delete the scratch audio.** `rm -f /tmp/YYYY-MM-DD-<lang>.mp3` for each lang.
+    Only for episodes that got through step 20 — a file whose upload or commit
+    failed is the only copy, so leave it for the retry. On a machine that stays
+    up, `/tmp` is not necessarily cleared (macOS does it at boot, and nowhere
+    else), so skipping this leaks every published episode onto the disk forever.
+
 ## Notes
 - No external AI API key is used; scoring, deduplication, enrichment, and summarizing are your own reasoning.
 - If fetch returns `[]`, write nothing and report "no new items".
