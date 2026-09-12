@@ -143,7 +143,8 @@ TTS 在长请求上会漂：一次要它念十分钟，语速会飘，后半段�
 **声音可以由本地模型生成。** 配好之后（见
 [docs/local-tts-setup_zh.md](docs/local-tts-setup_zh.md)），每次运行会先试本地，失败就
 回退 Gemini——而且按语言各自独立，中文可以走本地、英文同时回退。运行会打印 `tts=local`
-或 `tts=gemini (...)`，这行是本地路径悄悄失效的唯一信号。
+或 `tts=gemini (...)`。显存较大的卡还可以设置 `TTS_TAKES=2`，启用响度门限和
+faster-whisper 裁判；marker 会显示类似 `best-of-2: 3/12 swapped, 0 loud` 的摘要。
 
 这不是一笔省钱的账——这个量级下 Gemini 本来就便宜，一块大部分时间闲着的显卡也谈不上更省。
 它换来的是：单集时长和语言数量不再是预算问题，以及稿子内容不出本机。

@@ -384,15 +384,26 @@ def test_make_voice_refs_writes_clip_and_updates_metadata(tmp_path, monkeypatch)
 def test_wire_roundtrip():
     pcms = [b"\x01\x02", b"", b"\xff" * 5]
     blob = synth_qwen.frame_pcms(pcms, 24000)
-    got, sr = podcast_tts.unframe_pcms(blob)
+    got, sr, report = podcast_tts.unframe_pcms(blob)
     assert got == pcms
     assert sr == 24000
+    assert report == {}
 
 
 def test_wire_roundtrip_single_segment():
     pcms = [b"\x00" * 100]
-    got, sr = podcast_tts.unframe_pcms(synth_qwen.frame_pcms(pcms, 24000))
-    assert got == pcms and sr == 24000
+    got, sr, report = podcast_tts.unframe_pcms(synth_qwen.frame_pcms(pcms, 24000))
+    assert got == pcms and sr == 24000 and report == {}
+
+
+def test_unframe_returns_and_validates_the_judge_report():
+    report = {"takes": 2, "asr": "off", "segments": []}
+    assert podcast_tts.unframe_pcms(
+        synth_qwen.frame_pcms([b"AA"], 24000, report)
+    ) == ([b"AA"], 24000, report)
+    bad = json.dumps({"sr": 24000, "lens": [2], "report": []}).encode() + b"\nAA"
+    with pytest.raises(ValueError, match="bad report"):
+        podcast_tts.unframe_pcms(bad)
 
 
 def test_unframe_rejects_truncated_payload():
@@ -443,8 +454,9 @@ def test_synth_all_local_parses_remote_payload(monkeypatch):
 
     monkeypatch.setattr(podcast_tts, "_run_synth", fake_run_synth)
     monkeypatch.setattr(podcast_tts, "_sync_remote_files", lambda deadline: None)
-    assert podcast_tts._synth_all_local(["a", "b"], "zh", 600) == [b"AA", b"BB"]
-    assert seen["req"] == {"lang": "zh", "segments": ["a", "b"]}
+    monkeypatch.setattr(podcast_tts, "TTS_TAKES", 2)
+    assert podcast_tts._synth_all_local(["a", "b"], "zh", 600) == ([b"AA", b"BB"], {})
+    assert seen["req"] == {"lang": "zh", "segments": ["a", "b"], "takes": 2}
     assert seen["timeout"] == pytest.approx(600, abs=1)
 
 
@@ -470,11 +482,42 @@ def no_sleep(monkeypatch):
 
 
 def test_synth_all_uses_local_and_never_calls_gemini(monkeypatch, no_sleep):
-    monkeypatch.setattr(podcast_tts, "_synth_all_local", lambda s, l, t: [b"L"])
+    monkeypatch.setattr(podcast_tts, "_synth_all_local", lambda s, l, t: ([b"L"], {}))
     monkeypatch.setattr(podcast_tts, "_synth_all_gemini",
                         lambda s, l: pytest.fail("Gemini must not be called"))
     pcms, path = podcast_tts.synth_all(["a"], "zh")
     assert pcms == [b"L"] and path == "local"
+
+
+def test_judge_summary_covers_swaps_loudness_and_asr_degradation():
+    report = {"takes": 2, "asr": "large-v3", "segments": [
+        {"pick": 0, "loud": False}, {"pick": 1, "loud": True}
+    ]}
+    assert podcast_tts.judge_summary(report) == " (best-of-2: 1/2 swapped, 1 loud)"
+    report["asr"] = "off"
+    assert podcast_tts.judge_summary(report) == " (best-of-2: asr=off, 1 loud)"
+    assert podcast_tts.judge_summary({}) == ""
+
+
+def test_synth_all_marker_carries_the_judge_summary(monkeypatch, no_sleep):
+    report = {"takes": 2, "asr": "large-v3", "segments": [
+        {"pick": 1, "loud": False}
+    ]}
+    monkeypatch.setattr(
+        podcast_tts, "_synth_all_local", lambda s, l, t: ([b"L"], report)
+    )
+    monkeypatch.setattr(
+        podcast_tts, "_synth_all_gemini", lambda *_: pytest.fail("no fallback")
+    )
+    assert podcast_tts.synth_all(["a"], "zh") == (
+        [b"L"], "local (best-of-2: 1/1 swapped, 0 loud)"
+    )
+
+
+def test_public_defaults_to_one_take_and_uses_wider_budgets():
+    assert podcast_tts.TTS_TAKES == 1
+    assert podcast_tts.ATTEMPT_TIMEOUT_S == 900
+    assert podcast_tts.LOCAL_BUDGET_S == 1000
 
 
 def test_synth_all_retries_three_times_then_falls_back(monkeypatch, no_sleep):
@@ -621,7 +664,7 @@ def test_synth_all_local_shares_one_deadline_between_sync_and_synth(monkeypatch,
 
     monkeypatch.setattr(podcast_tts, "_sync_remote_files", slow_sync)
     monkeypatch.setattr(podcast_tts, "_run_synth", fake_run_synth)
-    assert podcast_tts._synth_all_local(["a"], "zh", 600) == [b"AA"]
+    assert podcast_tts._synth_all_local(["a"], "zh", 600) == ([b"AA"], {})
     assert seen["timeout"] == pytest.approx(500.0), "sync time must come out of the attempt"
 
 
@@ -661,7 +704,7 @@ def test_languages_are_independent_zh_local_en_gemini(monkeypatch, no_sleep):
     def local(segments, lang, timeout_s):
         if lang == "en":
             raise RuntimeError("en ref clip missing on the box")
-        return [b"ZH"]
+        return [b"ZH"], {}
 
     monkeypatch.setattr(podcast_tts, "_synth_all_local", local)
     monkeypatch.setattr(podcast_tts, "_synth_all_gemini",
@@ -681,8 +724,8 @@ def test_synth_all_local_sends_english_through_to_the_remote(monkeypatch):
 
     monkeypatch.setattr(podcast_tts, "_run_synth", fake_run_synth)
     monkeypatch.setattr(podcast_tts, "_sync_remote_files", lambda deadline: None)
-    assert podcast_tts._synth_all_local(["hello"], "en", 600) == [b"EN"]
-    assert seen["req"] == {"lang": "en", "segments": ["hello"]}
+    assert podcast_tts._synth_all_local(["hello"], "en", 600) == ([b"EN"], {})
+    assert seen["req"] == {"lang": "en", "segments": ["hello"], "takes": 1}
 
 
 def test_gemini_uses_a_distinct_voice_per_language(monkeypatch):
@@ -725,7 +768,7 @@ def test_same_machine_skips_the_sync_step(monkeypatch):
                         lambda deadline: pytest.fail("nothing to sync locally"))
     monkeypatch.setattr(podcast_tts, "_run_synth",
                         lambda p, t: synth_qwen.frame_pcms([b"AA"], 24000))
-    assert podcast_tts._synth_all_local(["a"], "zh", 600) == [b"AA"]
+    assert podcast_tts._synth_all_local(["a"], "zh", 600) == ([b"AA"], {})
 
 
 def test_synth_qwen_reads_assets_from_its_own_dir_by_default(monkeypatch):

@@ -15,8 +15,9 @@
 
 合成器是无状态的：启动、合成、退出。没有常驻服务要守，重启后不用拉起，也不用守一个端口。
 
-每次运行会打印 `tts=local` 或 `tts=gemini (...)`。**这行一定要看。** 本地路径悄悄失效、
-你已经连着一周在用 Gemini——只有这行会告诉你。
+每次运行会打印 `tts=local` 或 `tts=gemini (...)`。best-of-N 会附加类似
+`tts=local (best-of-2: 3/12 swapped, 0 loud)` 的摘要。**这行一定要看。**
+出现 `asr=off` 或非零 `loud` 时，即使合成完成也需要排查。
 
 ## 前置条件
 
@@ -74,6 +75,25 @@ cp vllm-omni/examples/offline_inference/text_to_speech/qwen3_tts/end2end.py vllm
 如果这个文件丢了、或者上游改了函数名，`synth_qwen.py` 会报出文件路径并指回这一步，而不是
 抛一个光秃秃的 `ImportError`。用上面那行 `cp` 重新复制即可。
 
+### 可选的 best-of-N 裁判
+
+默认仍是每段生成一次，以保持原有约 9 GB 显存需求。显存更大的卡可以安装可选 ASR 裁判，
+让每段生成两个独立候选：
+
+```bash
+cd ~/horizon-tts
+uv pip install --python .venv/bin/python faster-whisper
+# 写进流水线的 .env
+TTS_TAKES=2
+```
+
+`TTS_TAKES=2` 时，0.5 秒窗口 RMS 超过 0.30 的候选先被淘汰；Qwen 释放显存后，
+faster-whisper `large-v3` 转写两个候选，选择与原稿更接近的一个。Whisper 加载失败不会中断
+合成，但会退化成只按响度选择，并在 marker 里写 `asr=off`。
+
+该模式已在 16 GB 显卡上跑通；9 GB 最低配置下的显存表现尚未验证，小卡请保持一次。
+首次运行还会向 Hugging Face cache 下载约 3 GB Whisper 权重。
+
 ## 第二步：生成声音参考音
 
 本地模型没有预置音色，它从一段约 30 秒的样本 + **样本里逐字对应的文稿**克隆出一个。
@@ -122,16 +142,22 @@ TTS_LOCAL=0
 | 英文 | 564 s | 约 6 分钟 |
 
 固定开销里模型加载占大头——两段的测试仍要约 2.5 分钟，所以短单集并不会按比例变快。
-`podcast_tts.py` 里的 `LOCAL_BUDGET_S = 750` 和 `ATTEMPT_TIMEOUT_S = 600` 就是按这个量级
-定的；卡更慢就调大。
+当前上限是 `LOCAL_BUDGET_S = 1000` 和 `ATTEMPT_TIMEOUT_S = 900`，给双候选生成和 ASR
+留出余量；卡更慢就调大。
 
 同样的稿子，本地声音的语速比 Gemini 快 3–9%。这是需要去听的差别，不是错误。
 
 ## 排障
 
-先看这次运行打印的 `tts=` 值。`tts=local` 说明下面都不适用。
-`tts=gemini (local failed: ...)` 带着一行原因，完整错误（含合成器的 stderr）在运行的
-stderr 里。
+先看这次运行打印的 `tts=` 值。纯 `tts=local` 是单候选路径；best-of-N marker 会报告
+切换数和响度异常。`asr=off` 表示裁判没能加载，只按响度选取。`tts=gemini (local failed:
+...)` 带着一行原因，完整错误在 stderr 里。
+
+**best-of-N 显示 `asr=off`** —— 确认 `faster-whisper` 装在同一个 TTS venv，然后真正跑一
+期节目。只有 marker 出现 `best-of-2` 且没有 `asr=off` 才证明生产路径可用；仅仅构造
+`WhisperModel` 不足以验证 CUDA encoder。若 stderr 报 CUDA 动态库缺失，在该 venv 安装
+CUDA 12 的 `nvidia-cublas-cu12` 与 `nvidia-cudnn-cu12` wheel；合成器会在导入 ctranslate2
+前预加载其中的动态库。
 
 **`malformed TTS payload: bad header (...): 'INFO ...'`** —— 有东西在带帧头的载荷之前
 写了 stdout。vLLM 默认的日志 handler 就指向 stdout，所以 `synth_qwen.py` 的 `__main__`

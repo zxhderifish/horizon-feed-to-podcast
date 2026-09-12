@@ -189,7 +189,9 @@ R2_SECRET_ACCESS_KEY (source `<repo>/.env`; show names and voices come from `con
 
 16. **Synthesize.** For each lang:
     `cd <repo>/tools && ../horizon/.venv/bin/python podcast_tts.py <site>/scripts/YYYY-MM-DD-<lang>.md /tmp/YYYY-MM-DD-<lang>.mp3 <lang>`
-    It prints `<path> <duration>s`. Sanity: duration 300-1200s.
+    It prints `<path> <duration>s tts=<backend>`. Record the complete marker in
+    the run report. Sanity: duration 300-1200s. For best-of-N local runs,
+    `asr=off` or a nonzero `loud` count needs attention before upload.
 
 17. **Upload.** For each mp3:
     `../horizon/.venv/bin/python podcast_upload.py /tmp/YYYY-MM-DD-<lang>.mp3`

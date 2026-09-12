@@ -165,8 +165,9 @@ A jingle that suits one subject will be wrong for another, so pick your own.
 **The voice can come from a local model.** Set one up
 ([docs/local-tts-setup.md](docs/local-tts-setup.md)) and every run tries it first,
 falling back to Gemini on any failure — per language, so Chinese can run locally
-while English falls back. The run prints `tts=local` or `tts=gemini (...)`; that
-line is the only signal that the local path quietly stopped working.
+while English falls back. The run prints `tts=local` or `tts=gemini (...)`. On a
+larger GPU, optional `TTS_TAKES=2` adds a loudness gate and faster-whisper
+judge, with a marker such as `tts=local (best-of-2: 3/12 swapped, 0 loud)`.
 
 It is not a cost decision — at this volume Gemini is cheap and a mostly-idle GPU
 is not. What it buys is that episode length and language count stop being

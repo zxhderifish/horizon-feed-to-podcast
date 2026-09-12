@@ -22,9 +22,9 @@ elsewhere.
 The synthesizer is stateless: it starts, synthesizes, exits. Nothing to keep
 running, nothing to restart after a reboot, no port to guard.
 
-Each run prints `tts=local` or `tts=gemini (...)`. **Read that line.** It is the
-only signal that the local path quietly stopped working and you have been on
-Gemini for a week.
+Each run prints `tts=local` or `tts=gemini (...)`. Best-of-N adds a summary such
+as `tts=local (best-of-2: 3/12 swapped, 0 loud)`. **Read that line.** `asr=off`
+or a non-zero `loud` count needs attention even though synthesis completed.
 
 ## Requirements
 
@@ -94,6 +94,30 @@ If the file goes missing or upstream renames the function, `synth_qwen.py`
 aborts naming the file and pointing back at this step, rather than raising a
 bare `ImportError`. Re-copy it with the `cp` line above.
 
+### Optional best-of-N judge
+
+The default remains one take per segment, preserving the original ~9 GB GPU
+requirement. On a larger card, install the optional ASR judge and ask for two
+independent takes:
+
+```bash
+cd ~/horizon-tts
+uv pip install --python .venv/bin/python faster-whisper
+# in the pipeline's .env
+TTS_TAKES=2
+```
+
+With `TTS_TAKES=2`, each segment is synthesized twice. A 0.5-second-frame RMS
+gate rejects takes above 0.30; after Qwen releases the GPU, faster-whisper
+`large-v3` transcribes both takes and the closer match wins. If whisper cannot
+load, synthesis continues with the loudness gate alone and the marker says
+`asr=off`.
+
+This mode has been exercised on a 16 GB GPU. Its memory behavior on the 9 GB
+minimum configuration has not been validated, so keep one take there. The
+first judge run also downloads roughly 3 GB of whisper weights into the
+Hugging Face cache.
+
 ## Step 2: make the voice reference clips
 
 The local model does not have prebuilt voices. It clones one from a ~30 second
@@ -147,18 +171,27 @@ Measured on an RTX 5060 Ti (16 GB), both languages, ~13 segments each:
 | English | 564 s | ~6 min |
 
 Model load dominates the fixed cost — a two-segment test still takes ~2.5
-minutes, so a short episode is not proportionally faster. `LOCAL_BUDGET_S = 750`
-and `ATTEMPT_TIMEOUT_S = 600` in `podcast_tts.py` are sized against that; raise
-them if your card is slower.
+minutes, so a short episode is not proportionally faster. The current ceilings
+are `LOCAL_BUDGET_S = 1000` and `ATTEMPT_TIMEOUT_S = 900`; they leave room for
+two-take generation plus ASR. Raise them if your card is slower.
 
 The local voice ran 3–9% faster-paced than Gemini's on identical scripts. That
 is a difference to listen for, not an error.
 
 ## Troubleshooting
 
-Start from the `tts=` value the run printed. `tts=local` means none of this
-applies. `tts=gemini (local failed: ...)` carries a one-line reason; the full
-error, including the synthesizer's stderr, is on the run's stderr.
+Start from the `tts=` value the run printed. Plain `tts=local` is the one-take
+path. A best-of-N marker reports swaps and loud segments; `asr=off` means the
+judge could not load and selection used loudness only. `tts=gemini (local
+failed: ...)` carries a one-line reason; the full error is on stderr.
+
+**Best-of-N says `asr=off`** — verify `faster-whisper` is installed in the same
+TTS venv, then run one real episode again. A successful production-path check
+must print `best-of-2` without `asr=off`; merely constructing `WhisperModel`
+does not prove its CUDA encoder can run. If stderr names missing CUDA libraries,
+install the CUDA 12 `nvidia-cublas-cu12` and `nvidia-cudnn-cu12` wheels in that
+venv; the synthesizer preloads their packaged libraries before importing
+ctranslate2.
 
 **`malformed TTS payload: bad header (...): 'INFO ...'`** — something wrote to
 stdout ahead of the framed payload. vLLM's default log handler targets stdout,

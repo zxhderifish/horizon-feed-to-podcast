@@ -120,7 +120,7 @@ def split_script(md: str) -> List[str]:
 
 
 def unframe_pcms(blob: bytes) -> tuple:
-    """Inverse of synth_qwen.frame_pcms. Returns (segments, sample_rate)."""
+    """Inverse of frame_pcms. Returns (segments, sample_rate, judge report)."""
     nl = blob.find(b"\n")
     if nl < 0:
         raise ValueError("malformed TTS payload: no header line")
@@ -128,6 +128,8 @@ def unframe_pcms(blob: bytes) -> tuple:
     try:
         head = json.loads(raw_head.decode("utf-8"))
         lens, sr = head["lens"], head["sr"]
+        raw_report = head.get("report")
+        report = {} if raw_report is None else raw_report
     except (UnicodeDecodeError, json.JSONDecodeError, KeyError, TypeError) as e:
         # e.g. a vLLM log line that leaked onto fd 1 ahead of the payload —
         # show the operator what actually arrived, capped so a wall of log
@@ -138,6 +140,8 @@ def unframe_pcms(blob: bytes) -> tuple:
         isinstance(n, int) and not isinstance(n, bool) and n >= 0 for n in lens
     ):
         raise ValueError(f"malformed TTS payload: bad lens {repr(lens)[:200]}")
+    if not isinstance(report, dict):
+        raise ValueError(f"malformed TTS payload: bad report {repr(report)[:200]}")
     body, pos, out = blob[nl + 1:], 0, []
     for n in lens:
         chunk = body[pos:pos + n]
@@ -147,7 +151,7 @@ def unframe_pcms(blob: bytes) -> tuple:
         pos += n
     if pos != len(body):
         raise ValueError("malformed TTS payload: trailing bytes")
-    return out, int(sr)
+    return out, int(sr), report
 
 
 def load_sfx(sfx_dir: Path = SFX_DIR) -> dict:
@@ -355,29 +359,43 @@ def _run_synth(payload: bytes, timeout_s: float) -> bytes:
     return proc.stdout
 
 
-def _synth_all_local(segments: List[str], lang: str, timeout_s: float) -> List[bytes]:
+def _synth_all_local(segments: List[str], lang: str, timeout_s: float) -> tuple:
     """Sync and synthesis share one deadline, so an attempt costs at most what
     the caller granted — that is what makes LOCAL_BUDGET_S a ceiling by
     construction rather than an empirical hope."""
     deadline = time.monotonic() + timeout_s
     if REMOTE_HOST:
         _sync_remote_files(deadline)
-    payload = json.dumps({"lang": lang, "segments": segments}).encode("utf-8")
-    pcms, sr = unframe_pcms(_run_synth(payload, _left(deadline, "tts")))
+    payload = json.dumps({
+        "lang": lang,
+        "segments": segments,
+        "takes": TTS_TAKES,
+    }).encode("utf-8")
+    pcms, sr, report = unframe_pcms(
+        _run_synth(payload, _left(deadline, "tts"))
+    )
     if sr != SAMPLE_RATE:
         raise RuntimeError(f"local TTS sample rate {sr}, expected {SAMPLE_RATE}")
     if len(pcms) != len(segments):
         raise RuntimeError(f"expected {len(segments)} segments, got {len(pcms)}")
-    return pcms
+    return pcms, report
 
 
 LOCAL_ATTEMPTS = 3
-ATTEMPT_TIMEOUT_S = 600
+ATTEMPT_TIMEOUT_S = 900
 RETRY_BACKOFF_S = 30
+# One take preserves the public package's existing GPU-memory behavior. Set
+# TTS_TAKES=2 on a sufficiently large card to enable ASR-judged best-of-two.
+try:
+    TTS_TAKES = int(os.environ.get("TTS_TAKES", "1"))
+except ValueError as error:
+    raise ValueError("TTS_TAKES must be a positive integer") from error
+if TTS_TAKES < 1:
+    raise ValueError("TTS_TAKES must be a positive integer")
 # Hard ceiling on total local wall time per invocation. The CLI runs one
 # process per language, so there is no cross-process state to share a single
 # budget; size this against your own measured synthesis time.
-LOCAL_BUDGET_S = 750
+LOCAL_BUDGET_S = 1000
 
 
 def _one_line(reason: str, cap: int = 180) -> str:
@@ -385,6 +403,19 @@ def _one_line(reason: str, cap: int = 180) -> str:
     stay one readable line. The full reason is already on stderr."""
     flat = " ".join(str(reason).split())
     return flat if len(flat) <= cap else flat[:cap - 3] + "..."
+
+
+def judge_summary(report: dict) -> str:
+    """Compact best-of-N result for the user-visible tts= marker."""
+    takes = report.get("takes", 1)
+    if takes <= 1:
+        return ""
+    segments = report.get("segments") or []
+    loud = sum(bool(segment.get("loud")) for segment in segments)
+    if report.get("asr") == "off":
+        return f" (best-of-{takes}: asr=off, {loud} loud)"
+    swapped = sum(segment.get("pick", 0) != 0 for segment in segments)
+    return f" (best-of-{takes}: {swapped}/{len(segments)} swapped, {loud} loud)"
 
 
 def synth_all(segments: List[str], lang: str) -> tuple:
@@ -407,7 +438,10 @@ def synth_all(segments: List[str], lang: str) -> tuple:
             break
         granted = min(ATTEMPT_TIMEOUT_S, remaining)
         try:
-            return _synth_all_local(segments, lang, granted), "local"
+            pcms, report = _synth_all_local(segments, lang, granted)
+            print(f"[tts] judge report: {json.dumps(report, separators=(',', ':'))}",
+                  file=sys.stderr)
+            return pcms, "local" + judge_summary(report)
         except subprocess.TimeoutExpired:
             # A hang leaves the synthesizer orphaned and still holding VRAM,
             # so a retry lands on an occupied card and is likelier to be

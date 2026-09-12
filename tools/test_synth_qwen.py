@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+from array import array
 from pathlib import Path
 
 import pytest
@@ -11,15 +12,17 @@ import synth_qwen
 
 def fake_synth(segments, lang):
     assert lang == "zh"
-    return [f"<{s}>".encode("utf-8") for s in segments], 24000
+    return [f"<{s}>!".encode("utf-8") for s in segments], 24000
 
 
 def test_run_returns_framed_pcm_in_order():
     payload = json.dumps({"lang": "zh", "segments": ["a", "b"]}).encode("utf-8")
     out = synth_qwen.run(payload, synth=fake_synth)
     head, body = out.split(b"\n", 1)
-    assert json.loads(head) == {"sr": 24000, "lens": [3, 3]}
-    assert body == b"<a><b>"
+    parsed = json.loads(head)
+    assert parsed["sr"] == 24000 and parsed["lens"] == [4, 4]
+    assert parsed["report"]["takes"] == 1
+    assert body == b"<a>!<b>!"
 
 
 def test_run_rejects_empty_segments():
@@ -92,7 +95,78 @@ def test_run_handles_english():
     out = synth_qwen.run(json.dumps({"lang": "en", "segments": ["hi"]}).encode("utf-8"),
                          synth=synth)
     assert seen["lang"] == "en"
-    assert out.split(b"\n", 1) == [b'{"sr": 24000, "lens": [2]}', b"EN"]
+    head, body = out.split(b"\n", 1)
+    assert json.loads(head)["lens"] == [2] and body == b"EN"
+
+
+def _pcm(level: int, seconds: float, sr: int = 24000) -> bytes:
+    count = int(seconds * sr)
+    return array("h", [level, -level] * (count // 2)).tobytes()
+
+
+def test_tokenize_and_asr_ratio_ignore_spacing_and_punctuation():
+    assert synth_qwen.tokenize("API 16.0.4，模型 A。") == [
+        "api", "16.0", "4", "模", "型", "a"
+    ]
+    assert synth_qwen.asr_ratio("同一个 API 授权", "同一个API授权") == 1.0
+    assert synth_qwen.asr_ratio("同一个 API 授权", "同一个API索权") < 1.0
+
+
+def test_frame_rms_max_finds_a_loud_half_second():
+    quiet = _pcm(3277, 1.0)
+    burst = _pcm(13107, 0.5)
+    assert synth_qwen.frame_rms_max(quiet, 24000) == pytest.approx(0.10, abs=0.005)
+    assert synth_qwen.frame_rms_max(quiet + burst, 24000) == pytest.approx(0.40, abs=0.005)
+    assert synth_qwen.frame_rms_max(b"", 24000) == 0.0
+
+
+def test_frame_rms_max_stays_python_311_compatible():
+    assert "sumprod" not in synth_qwen.frame_rms_max.__code__.co_names
+
+
+def test_pick_take_uses_ratio_after_disqualifying_loud_takes():
+    assert synth_qwen.pick_take([0.90, 0.95], [0.20, 0.21]) == (1, False)
+    assert synth_qwen.pick_take([0.80, 0.99], [0.20, 0.45]) == (0, False)
+    assert synth_qwen.pick_take([0.99, 0.80], [0.45, 0.35]) == (1, True)
+    assert synth_qwen.pick_take(None, [0.45, 0.20, 0.21]) == (1, False)
+
+
+def test_run_draws_takes_segment_major_and_keeps_the_best():
+    seen = {}
+
+    def synth(texts, lang):
+        seen["texts"] = texts
+        return [_pcm(1000 + i, 0.1) for i in range(len(texts))], 24000
+
+    def asr(pcms, sr, lang):
+        return ["API 索权", "API 授权", "第二段", "第二段"]
+
+    payload = json.dumps({
+        "lang": "zh", "segments": ["API 授权", "第二段"], "takes": 2
+    }).encode("utf-8")
+    head, body = synth_qwen.run(payload, synth=synth, asr=asr).split(b"\n", 1)
+    report = json.loads(head)["report"]
+    assert seen["texts"] == ["API 授权", "API 授权", "第二段", "第二段"]
+    assert [segment["pick"] for segment in report["segments"]] == [1, 0]
+    assert report["asr"] == "large-v3"
+    assert body == _pcm(1001, 0.1) + _pcm(1002, 0.1)
+
+
+def test_run_degrades_to_loudness_only_and_validates_inputs():
+    def synth(texts, lang):
+        return [_pcm(13107, 0.1), _pcm(1000, 0.1)], 24000
+
+    payload = json.dumps({"lang": "zh", "segments": ["x"], "takes": 2}).encode()
+    head, body = synth_qwen.run(payload, synth=synth, asr=lambda *_: None).split(b"\n", 1)
+    report = json.loads(head)["report"]
+    assert report["asr"] == "off" and report["segments"][0]["pick"] == 1
+    assert body == _pcm(1000, 0.1)
+
+    with pytest.raises(ValueError, match="takes"):
+        synth_qwen.run(json.dumps({"lang": "zh", "segments": ["x"], "takes": 0}).encode(),
+                       synth=synth)
+    with pytest.raises(RuntimeError, match="malformed s16le PCM"):
+        synth_qwen.run(payload, synth=lambda *_: ([b"x", b"yy"], 24000))
 
 
 def test_helper_loader_names_the_missing_file_and_the_doc(tmp_path):
@@ -186,6 +260,9 @@ class Omni:
                 for i in range(len(inputs))]
         return list(reversed(outs))
 
+    def close(self):
+        os.write(2, b"ENGINE_CLOSED\\n")
+
 
 np = types.ModuleType("numpy")
 np.clip = lambda a, lo, hi: a
@@ -234,8 +311,25 @@ def test_remote_main_stdout_parses_as_a_framed_payload(tmp_path, lang, expected)
                        capture_output=True, timeout=60)
     assert r.returncode == 0, r.stderr.decode("utf-8", "replace")[-2000:]
 
-    pcms, sr = podcast_tts.unframe_pcms(r.stdout)
+    pcms, sr, report = podcast_tts.unframe_pcms(r.stdout)
     assert pcms == [b"seg0", b"seg1", b"seg2"], "submission order must be restored"
     assert sr == 24000
+    assert report["takes"] == 1
     assert b"INFO" in r.stderr and b"INFO" not in r.stdout  # fd 1 stayed clean
     assert ("LANGS=" + ",".join([expected] * 3)).encode("utf-8") in r.stderr
+
+
+def test_remote_main_best_of_two_without_whisper_installed(tmp_path):
+    import podcast_tts
+
+    src = Path(synth_qwen.__file__).resolve().read_text(encoding="utf-8")
+    driver = _deploy(tmp_path, src)
+    payload = json.dumps({"lang": "zh", "segments": ["a", "b"], "takes": 2}).encode()
+    result = subprocess.run(
+        [sys.executable, str(driver)], input=payload, capture_output=True, timeout=60
+    )
+    assert result.returncode == 0, result.stderr.decode("utf-8", "replace")[-2000:]
+    pcms, sr, report = podcast_tts.unframe_pcms(result.stdout)
+    assert pcms == [b"seg0", b"seg2"] and sr == 24000
+    assert report["takes"] == 2 and report["asr"] == "off"
+    assert b"ENGINE_CLOSED" in result.stderr
